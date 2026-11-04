@@ -62,6 +62,14 @@ object PenrixSiteModuleRegistry {
             description = "搜书、正文与阅读进度",
         ),
         PenrixSiteModule(
+            id = "uukan",
+            title = "UU看书",
+            homeUrl = "https://uukanshu.cc/",
+            hosts = setOf("uukanshu.cc", "uukan.org"),
+            kind = PenrixSiteKind.NOVEL,
+            description = "小说搜索、完整目录与章节阅读",
+        ),
+        PenrixSiteModule(
             id = "sis001",
             title = "SIS001",
             homeUrl = "https://www.sis001.com/forum/index.php",
