@@ -4,6 +4,8 @@
 
 package org.mozilla.fenix.penrix
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,11 +20,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
@@ -38,6 +44,18 @@ fun PenrixSiteHome(
     onOpenPage: (PenrixSiteModule, String) -> Unit,
 ) {
     var currentId by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var adblockStatus by remember { mutableStateOf(PenrixAdblockBootstrap.status(context)) }
+    DisposableEffect(context) {
+        val prefs = context.getSharedPreferences("penrix_adblock_bootstrap", Context.MODE_PRIVATE)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "initial_install_status") {
+                adblockStatus = PenrixAdblockBootstrap.status(context)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val currentModule = PenrixSiteModuleRegistry.byId(currentId)
     BackHandler(enabled = currentModule != null) { currentId = null }
 
@@ -50,6 +68,17 @@ fun PenrixSiteHome(
             Text(
                 "我的站点 · 每个网站独立使用，原网页作为备用入口",
                 style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = when (adblockStatus) {
+                    "installed" -> "去广告：完整版 uBlock Origin 首次配置完成"
+                    "installing" -> "去广告：正在安装完整版 uBlock Origin"
+                    "install_failed", "metadata_unavailable" ->
+                        "去广告：首次安装暂未成功；下次启动将重试，也可在扩展中手动安装"
+                    "not_enabled" -> "去广告：扩展未启用，请在扩展管理中检查"
+                    else -> "去广告：准备自动安装完整版 uBlock Origin"
+                },
+                style = MaterialTheme.typography.bodySmall,
             )
             PenrixSiteModuleRegistry.modules.groupBy { it.kind }.forEach { (kind, sites) ->
                 Text(kind.label, style = MaterialTheme.typography.titleMedium)
