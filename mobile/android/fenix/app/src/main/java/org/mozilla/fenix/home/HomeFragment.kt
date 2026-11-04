@@ -1004,7 +1004,7 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
                     interactor = sessionControlInteractor,
                     onCollectionsMigrationCardAction = { action ->
                         collectionsMigrationCardStore.dispatch(action)
-    
+
                         when (action) {
                             is CollectionsMigrationCardAction.ViewTabGroupsClicked -> openTabGroups()
                         }
