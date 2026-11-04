@@ -178,6 +178,7 @@ import org.mozilla.fenix.messaging.MessageNotificationWorker
 import org.mozilla.fenix.nimbus.FxNimbus
 import org.mozilla.fenix.onboarding.ensureMarketingChannelExists
 import org.mozilla.fenix.onboarding.seedOnboardingCompletedTimestampForDebugIfNeeded
+import org.mozilla.fenix.penrix.PenrixAdblockBootstrap
 import org.mozilla.fenix.penrix.PenrixSiteTracker
 import org.mozilla.fenix.pbmlock.DefaultPrivateBrowsingLockStorage
 import org.mozilla.fenix.pbmlock.PrivateBrowsingLockFeature
@@ -518,6 +519,9 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity, Crash
 
         // Persist only allowlisted site-module URLs from normal tabs, never private sessions.
         PenrixSiteTracker.start(lifecycleScope, components.core.store, applicationContext)
+
+        // Install the signed, full Firefox uBlock Origin once for this private browser profile.
+        PenrixAdblockBootstrap.start(applicationContext, components, lifecycleScope)
 
         // Changing a language on the Language screen restarts the activity, but the activity keeps
         // the old layout direction. We have to update the direction manually.
