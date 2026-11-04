@@ -35,6 +35,22 @@ object PenrixNovelRoutes {
     private val twkanDirectory = Regex("^/book/(\\d+)/index\\.html$")
     private val uukanChapter = Regex("^/book/(\\d+)/(\\d+)\\.html$")
 
+    /**
+     * A site's "next chapter" button sometimes links back to a book page when no
+     * chapter remains (observed on 69shuba's latest chapter on 2026-11-04).
+     * Never treat a non-chapter destination or another book as a continuation.
+     */
+    fun isNextChapter(fromUrl: String?, candidateUrl: String?): Boolean {
+        val from = classify(fromUrl) ?: return false
+        val candidate = classify(candidateUrl) ?: return false
+        return from.pageKind == PenrixNovelPageKind.CHAPTER &&
+            candidate.pageKind == PenrixNovelPageKind.CHAPTER &&
+            from.siteId == candidate.siteId &&
+            from.workKey != null &&
+            from.workKey == candidate.workKey &&
+            from.chapterKey != candidate.chapterKey
+    }
+
     fun classify(url: String?): PenrixNovelRoute? {
         val site = PenrixSiteModuleRegistry.forUrl(url) ?: return null
         if (site.kind != PenrixSiteKind.NOVEL) return null
