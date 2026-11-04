@@ -1801,11 +1801,9 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity, Crash
      */
     @VisibleForTesting
     internal fun shouldStartOnHome(intent: Intent? = this.intent): Boolean {
-        return components.strictMode.allowViolation(StrictMode::allowThreadDiskReads) {
-            // We only want to open on home when users tap the app,
-            // we want to ignore other cases when the app gets open by users clicking on links.
-            getSettings().shouldStartOnHome() && intent?.action == ACTION_MAIN
-        }
+        // This fork is a site-app container: tapping its launcher always opens the modules.
+        // External links keep Firefox's standard direct-to-browser handling.
+        return intent?.action == ACTION_MAIN
     }
 
     fun processIntent(intent: Intent): Boolean {
