@@ -5,6 +5,8 @@
 package org.mozilla.fenix.penrix
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -48,6 +50,35 @@ class PenrixNovelRoutesTest {
         assertEquals(
             PenrixNovelPageKind.UNKNOWN,
             PenrixNovelRoutes.classify("https://twkan.com/new-ui/chapter/42")?.pageKind,
+        )
+    }
+
+    @Test
+    fun `next chapter must be a genuine chapter in the same book`() {
+        // The live 69shuba last chapter's "next" link points back to the work page.
+        assertFalse(
+            PenrixNovelRoutes.isNextChapter(
+                "https://www.69shuba.com/txt/90442/41051913",
+                "https://www.69shuba.com/book/90442.htm",
+            )
+        )
+        assertTrue(
+            PenrixNovelRoutes.isNextChapter(
+                "https://twkan.com/txt/82888/49191968",
+                "https://twkan.com/txt/82888/49191969",
+            )
+        )
+        assertTrue(
+            PenrixNovelRoutes.isNextChapter(
+                "https://uukanshu.cc/book/25312/16302351.html",
+                "https://uukanshu.cc/book/25312/16302352.html",
+            )
+        )
+        assertFalse(
+            PenrixNovelRoutes.isNextChapter(
+                "https://twkan.com/txt/82888/49191968",
+                "https://uukanshu.cc/book/25312/16302352.html",
+            )
         )
     }
 
