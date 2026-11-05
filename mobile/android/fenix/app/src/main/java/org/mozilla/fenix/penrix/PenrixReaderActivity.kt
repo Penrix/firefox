@@ -35,9 +35,7 @@ class PenrixReaderActivity : Activity() {
         fun dp(value: Int) = (value * density).toInt()
         val background = Color.rgb(246, 244, 236)
         val foreground = Color.rgb(35, 42, 37)
-        window.statusBarColor = background
-        window.navigationBarColor = background
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        styleSystemBars(background)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(background)
@@ -92,6 +90,13 @@ class PenrixReaderActivity : Activity() {
         layout.addView(controls)
         setContentView(layout)
         scroll.post { scroll.scrollTo(0, reading.position(chapterUrl)) }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun styleSystemBars(background: Int) {
+        window.statusBarColor = background
+        window.navigationBarColor = background
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
     }
 
     private fun navigate(url: String, continueReading: Boolean) {
