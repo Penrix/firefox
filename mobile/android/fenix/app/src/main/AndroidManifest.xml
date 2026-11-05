@@ -95,6 +95,8 @@
           Note that `fennec*` build types override the targetActivity property in the Manifest
           inside their source set.
         -->
+        <activity android:name=".penrix.PenrixReaderActivity" android:exported="false" />
+
         <activity-alias
             android:name="${applicationId}.App"
             android:exported="true"
@@ -957,3 +959,4 @@
     </application>
 
 </manifest>
+

@@ -46,6 +46,14 @@ data class PenrixSiteModule(
 object PenrixSiteModuleRegistry {
     val modules: List<PenrixSiteModule> = listOf(
         PenrixSiteModule(
+            id = "cool18",
+            title = "禁忌书屋",
+            homeUrl = "https://www.cool18.com/bbs4/index.php",
+            hosts = setOf("cool18.com"),
+            kind = PenrixSiteKind.FORUM,
+            description = "主题、正文与收藏续读",
+        ),
+        PenrixSiteModule(
             id = "69shuba",
             title = "69书吧",
             homeUrl = "https://www.69shuba.com/",
@@ -114,3 +122,4 @@ object PenrixSiteModuleRegistry {
     fun safeResumeUrl(module: PenrixSiteModule, savedUrl: String?): String =
         if (forUrl(savedUrl)?.id == module.id) savedUrl!! else module.homeUrl
 }
+

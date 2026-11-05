@@ -1,0 +1,15 @@
+{
+  "manifest_version": 2,
+  "name": "Penrix 阅读助手",
+  "version": "0.1.0",
+  "description": "站点正文净化与本地繁简转换",
+  "browser_specific_settings": { "gecko": { "id": "reading@penrix.local" } },
+  "permissions": ["storage", "activeTab", "tabs", "<all_urls>", "nativeMessaging", "nativeMessagingFromContent", "geckoViewAddons"],
+  "background": { "scripts": ["background.js"] },
+  "browser_action": { "default_title": "简体 / 原文", "default_popup": "popup.html" },
+  "content_scripts": [{
+    "matches": ["*://twkan.com/*", "*://*.twkan.com/*", "*://cool18.com/bbs4/*", "*://*.cool18.com/bbs4/*"],
+    "js": ["opencc.js", "text.js", "content.js"],
+    "run_at": "document_idle"
+  }]
+}

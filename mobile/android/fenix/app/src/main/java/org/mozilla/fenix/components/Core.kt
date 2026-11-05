@@ -115,6 +115,7 @@ import org.mozilla.fenix.BuildConfig
 import org.mozilla.fenix.Config
 import org.mozilla.fenix.IntentReceiverActivity
 import org.mozilla.fenix.R
+import org.mozilla.fenix.penrix.PenrixReadingFeature
 import org.mozilla.fenix.ReleaseChannel
 import org.mozilla.fenix.browser.desktopmode.DefaultDesktopModeRepository
 import org.mozilla.fenix.browser.desktopmode.DesktopModeMiddleware
@@ -432,6 +433,7 @@ class Core(
             .apply {
                 // Install the "icons" WebExtension to automatically load icons for every visited website.
                 icons.install(engine, this)
+                PenrixReadingFeature.install(context, engine, this, applicationScope)
 
                 applicationScope.launch {
                     val providerList = serpTelemetryRepository.updateProviderList()
@@ -828,3 +830,4 @@ internal fun applyBaselineFingerprintingProtectionFeature(
     feature.enabled?.let { settings.baselineFingerprintingProtection = it }
     feature.overrides?.let { settings.baselineFingerprintingProtectionOverrides = it }
 }
+
