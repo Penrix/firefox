@@ -21,7 +21,6 @@ jobs:
       MOZ_ARTIFACT_REVISION: dcafde486e11b7a7776137b92fec2a6f56744eab
       GIT_NO_LAZY_FETCH: '1'
       PYTHONUTF8: '1'
-      MOZ_AUTOMATION: '1'
     steps:
       - uses: actions/checkout@v4
         with:
