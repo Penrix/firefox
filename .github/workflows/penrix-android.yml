@@ -39,7 +39,7 @@ jobs:
       - name: Bootstrap Android tools
         run: ./mach --no-interactive bootstrap --application-choice mobile_android_artifact_mode --no-agentic-tools
       - name: Prepare Gecko artifacts and generated files
-        run: ./mach build export
+        run: ./mach build
       - name: Build private browser APK
         run: ./mach gradle fenix:assembleDebug --no-daemon --console=plain
       - uses: actions/upload-artifact@v4
