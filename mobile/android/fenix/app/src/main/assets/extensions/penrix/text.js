@@ -2,6 +2,11 @@
   'use strict';
   const OpenCC = typeof module === 'object' ? require('./opencc.js') : root.OpenCC;
   const convert = OpenCC.Converter({ from: 'twp', to: 'cn' });
+  const mainlandPhrases = OpenCC.CustomConverter([
+    ['打开软体', '打开软件'], ['安装软体', '安装软件'], ['下载软体', '下载软件'],
+    ['随身碟', 'U盘'], ['档案存到随身碟', '文件存到U盘'], ['档案存到U盘', '文件存到U盘'], ['资料库', '数据库'],
+    ['网路', '网络'], ['影片还在下载', '视频还在下载'], ['下载影片', '下载视频'],
+  ]);
   const cues = ['写到这里','寫到這裡','读者记一下','讀者記一下','请记住','請記住','本书首发','本書首發','记住','記住','首发','首發','本站域名','网站域名','網站域名','我们域名','我們域名','找台湾小说','找台灣小說','追台湾小说','追台灣小說','读台湾','讀台灣','看台湾','看台灣','台湾好书','台灣好書','追台湾小说首选','追台灣小說首選','看台湾小说认准','看台灣小說認準'];
   const tails = ['超全','超赞','超讚','超靠谱','超靠譜','超给力','超給力','超实用','超實用','超省心','超贴心','超貼心','超顺畅','超順暢','随时看','隨時看','轻松看','輕鬆看','轻松读','輕鬆讀','章节更新','章節更新','无错章节','無錯章節','无乱序','無亂序','阅读体验','閱讀體驗','观看最快的章节更新','觀看最快的章節更新','提供给你无错章节无乱序章节的阅读体验','提供給你無錯章節無亂序章節的閱讀體驗'];
   const folds = { '臺':'台','説':'說','❻':'6','➅':'6','➏':'6','❾':'9','➈':'9','➒':'9','ѕ':'s','丂':'s','н':'h','ħ':'h','ย':'u','א':'x','х':'x','с':'c','ο':'o','о':'o','σ':'o','м':'m' };
@@ -104,7 +109,7 @@
     for (const span of [...removedSpans].reverse()) cleanText = cleanText.slice(0, span.start) + cleanText.slice(span.end);
     return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t\u3000]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:5 };
   }
-  const api = { cleanTwkan, simplify:text => convert(text) };
+  const api = { cleanTwkan, simplify:text => mainlandPhrases(convert(text)) };
   if (typeof module === 'object') module.exports = api;
   else root.PenrixText = api;
 })(globalThis);

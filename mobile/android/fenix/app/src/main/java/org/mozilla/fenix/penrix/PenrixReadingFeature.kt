@@ -46,8 +46,10 @@ object PenrixReadingFeature {
                                 val prefs = app.getSharedPreferences("penrix_reader", Context.MODE_PRIVATE)
                                 val pending = prefs.getString("pending_url", null)
                                 if (store.state.selectedTabId == tab.id && (type == "read" || type == "chapter_ready" && pending == url)) {
-                                    prefs.edit().remove("pending_url").apply()
-                                    app.startActivity(Intent(app, PenrixReaderActivity::class.java).putExtra("chapter_url", url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                    val flags = if (pending == url) prefs.getInt("pending_reader_flags", 0) else 0
+                                    prefs.edit().remove("pending_url").remove("pending_reader_flags").apply()
+                                    app.startActivity(Intent(app, PenrixReaderActivity::class.java).putExtra("chapter_url", url)
+                                        .putExtra("reader_flags", flags).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                                 } else if (type == "save") {
                                     Toast.makeText(app, "已加入书架", Toast.LENGTH_SHORT).show()
                                 }

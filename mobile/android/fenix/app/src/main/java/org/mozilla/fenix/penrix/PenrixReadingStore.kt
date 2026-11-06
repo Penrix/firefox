@@ -12,13 +12,17 @@ import java.io.Closeable
 import org.json.JSONObject
 
 class PenrixReadingStore(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "penrix-reading.db", null, 1), Closeable {
+    SQLiteOpenHelper(context.applicationContext, "penrix-reading.db", null, 2), Closeable {
+    data class Position(val pixels: Int, val offset: Int)
+
     override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE chapters(url TEXT PRIMARY KEY, payload TEXT NOT NULL, scroll INTEGER NOT NULL DEFAULT 0)")
+        db.execSQL("CREATE TABLE chapters(url TEXT PRIMARY KEY, payload TEXT NOT NULL, scroll INTEGER NOT NULL DEFAULT 0, text_offset INTEGER NOT NULL DEFAULT -1)")
         db.execSQL("CREATE TABLE library(work_url TEXT PRIMARY KEY, title TEXT NOT NULL, chapter_url TEXT NOT NULL, updated INTEGER NOT NULL)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) db.execSQL("ALTER TABLE chapters ADD COLUMN text_offset INTEGER NOT NULL DEFAULT -1")
+    }
 
     fun save(chapter: JSONObject, addToLibrary: Boolean = false) {
         val db = writableDatabase
@@ -42,12 +46,15 @@ class PenrixReadingStore(context: Context) :
         if (it.moveToFirst()) JSONObject(it.getString(0)) else null
     }
 
-    fun position(url: String): Int = readableDatabase.rawQuery("SELECT scroll FROM chapters WHERE url=?", arrayOf(url)).use {
-        if (it.moveToFirst()) it.getInt(0) else 0
+    fun position(url: String): Position = readableDatabase.rawQuery("SELECT scroll, text_offset FROM chapters WHERE url=?", arrayOf(url)).use {
+        if (it.moveToFirst()) Position(it.getInt(0), it.getInt(1)) else Position(0, -1)
     }
 
-    fun position(url: String, scroll: Int) {
-        writableDatabase.update("chapters", ContentValues().apply { put("scroll", scroll) }, "url=?", arrayOf(url))
+    fun position(url: String, scroll: Int, offset: Int) {
+        writableDatabase.update("chapters", ContentValues().apply {
+            put("scroll", scroll)
+            put("text_offset", offset)
+        }, "url=?", arrayOf(url))
     }
 
     fun library(): List<JSONObject> = readableDatabase.rawQuery("SELECT chapter_url FROM library ORDER BY updated DESC", null).use {
