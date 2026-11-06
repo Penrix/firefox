@@ -118,6 +118,7 @@ class PenrixReaderActivity : Activity() {
         body.textSize = setting("font_size", 21).toFloat()
         body.setLineSpacing(dp(setting("line_spacing", 6)).toFloat(), 1f)
         val paragraphGap = dp(setting("paragraph_spacing", 12))
+        val normal = body.paint.fontMetricsInt
         val source = chapter.getString(if (original) "rawText" else "text")
         val formatted = SpannableStringBuilder()
         for (line in source.lineSequence().map(String::trim).filter(String::isNotEmpty)) {
@@ -126,10 +127,13 @@ class PenrixReaderActivity : Activity() {
             formatted.append(line)
             formatted.setSpan(LeadingMarginSpan.Standard((body.textSize * 2).roundToInt(), 0),
                 start, formatted.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            formatted.setSpan(LineHeightSpan { _, _, _, _, _, metrics ->
-                metrics.descent += paragraphGap
-                metrics.bottom += paragraphGap
-            }, formatted.length - 1, formatted.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            val last = formatted.length - 1
+            formatted.setSpan(LineHeightSpan { _, start, end, _, _, metrics ->
+                if (last >= start && last < end) {
+                    metrics.descent = normal.descent + paragraphGap
+                    metrics.bottom = normal.bottom + paragraphGap
+                }
+            }, last, last + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         body.text = formatted
     }
@@ -194,7 +198,8 @@ class PenrixReaderActivity : Activity() {
         }
         val layout = body.layout ?: return
         val target = scroll.scrollY + direction * scroll.height - body.totalPaddingTop
-        val line = layout.getLineForVertical(target)
+        var line = layout.getLineForVertical(target)
+        if (direction < 0 && target > layout.getLineTop(line) && line + 1 < layout.lineCount) line++
         val pageY = body.totalPaddingTop + layout.getLineTop(line)
         scroll.scrollTo(0, if (direction > 0 && pageY <= scroll.scrollY) scroll.scrollY + scroll.height else pageY)
     }
