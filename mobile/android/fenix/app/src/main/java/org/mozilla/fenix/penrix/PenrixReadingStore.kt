@@ -8,9 +8,11 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.io.Closeable
 import org.json.JSONObject
 
-class PenrixReadingStore(context: Context) : SQLiteOpenHelper(context.applicationContext, "penrix-reading.db", null, 1) {
+class PenrixReadingStore(context: Context) :
+    SQLiteOpenHelper(context.applicationContext, "penrix-reading.db", null, 1), Closeable {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE chapters(url TEXT PRIMARY KEY, payload TEXT NOT NULL, scroll INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE library(work_url TEXT PRIMARY KEY, title TEXT NOT NULL, chapter_url TEXT NOT NULL, updated INTEGER NOT NULL)")
