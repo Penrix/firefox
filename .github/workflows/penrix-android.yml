@@ -1,0 +1,60 @@
+name: Penrix Android APK
+
+on:
+  push:
+    branches: [penrix/browser-requirements-20261104]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: penrix-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      MOZBUILD_STATE_PATH: /home/runner/.mozbuild
+      MOZ_ARTIFACT_REVISION: dcafde486e11b7a7776137b92fec2a6f56744eab
+      GIT_NO_LAZY_FETCH: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/cache/restore@v4
+        id: dependencies
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.mozbuild
+          key: penrix-android-${{ runner.os }}-dcafde4-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties', 'mobile/android/gradle/libs.versions.toml') }}
+          restore-keys: penrix-android-${{ runner.os }}-dcafde4-
+      - name: Configure artifact build
+        run: cp penrix/mozconfig.example mozconfig
+      - name: Bootstrap Android tools
+        run: ./mach --no-interactive bootstrap --application-choice mobile_android_artifact_mode --no-agentic-tools
+      - name: Prepare Gecko artifacts and generated files
+        run: ./mach build
+      - name: Build private browser APK
+        run: ./mach gradle fenix:assembleDebug --no-daemon --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Penrix-Private-K20-${{ github.sha }}
+          path: objdir-frontend/gradle/build/mobile/android/fenix/app/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save downloaded dependencies even after compilation failure
+        if: always() && steps.dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.mozbuild
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}

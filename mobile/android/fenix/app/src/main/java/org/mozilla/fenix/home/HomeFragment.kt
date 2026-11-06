@@ -186,6 +186,10 @@ import org.mozilla.fenix.onboarding.OnboardingFragmentDirections
 import org.mozilla.fenix.onboarding.OnboardingReason
 import org.mozilla.fenix.onboarding.OnboardingTelemetryRecorder
 import org.mozilla.fenix.onboarding.continuous.ContinuousOnboardingFeature
+import org.mozilla.fenix.penrix.PenrixSiteHistory
+import org.mozilla.fenix.penrix.PenrixSiteHome
+import org.mozilla.fenix.penrix.PenrixSiteModule
+import org.mozilla.fenix.penrix.PenrixSiteModuleRegistry
 import org.mozilla.fenix.pbmlock.NavigationOrigin
 import org.mozilla.fenix.pbmlock.observePrivateModeLock
 import org.mozilla.fenix.perf.MarkersFragmentLifecycleCallbacks
@@ -987,34 +991,41 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
                         )
                 }
         ) {
-            Homepage(
-                state =
-                    HomepageState.build(
-                        appState = appState,
-                        privacyNoticeBannerState = privacyNoticeBannerState,
-                        collectionsMigrationCardState = collectionsMigrationCardState,
-                        settings = settings,
-                        browsingModeManager = browsingModeManager,
-                    ),
-                interactor = sessionControlInteractor,
-                onCollectionsMigrationCardAction = { action ->
-                    collectionsMigrationCardStore.dispatch(action)
+            if (appState.mode.isPrivate) {
+                Homepage(
+                    state =
+                        HomepageState.build(
+                            appState = appState,
+                            privacyNoticeBannerState = privacyNoticeBannerState,
+                            collectionsMigrationCardState = collectionsMigrationCardState,
+                            settings = settings,
+                            browsingModeManager = browsingModeManager,
+                        ),
+                    interactor = sessionControlInteractor,
+                    onCollectionsMigrationCardAction = { action ->
+                        collectionsMigrationCardStore.dispatch(action)
 
-                    when (action) {
-                        is CollectionsMigrationCardAction.ViewTabGroupsClicked -> openTabGroups()
-                    }
-                },
-                onTopSitesItemBound = {
-                    StartupTimeline.onTopSitesItemBound(activity = (requireActivity() as HomeActivity))
-                },
-                onMiddleSearchBarVisibilityChanged = { isVisible ->
-                    toolbarView.updateAddressBarVisibility(!isVisible)
-                },
-                modifier =
-                    Modifier.thenConditional(Modifier.verticalFadingEdges(HOMEPAGE_EDGE_FADE_LENGTH)) {
-                        fadeContentEdges
+                        when (action) {
+                            is CollectionsMigrationCardAction.ViewTabGroupsClicked -> openTabGroups()
+                        }
                     },
-            )
+                    onTopSitesItemBound = {
+                        StartupTimeline.onTopSitesItemBound(activity = (requireActivity() as HomeActivity))
+                    },
+                    onMiddleSearchBarVisibilityChanged = { isVisible ->
+                        toolbarView.updateAddressBarVisibility(!isVisible)
+                    },
+                    modifier =
+                        Modifier.thenConditional(Modifier.verticalFadingEdges(HOMEPAGE_EDGE_FADE_LENGTH)) {
+                            fadeContentEdges
+                        },
+                )
+            } else {
+                PenrixSiteHome(
+                    history = remember { PenrixSiteHistory(requireContext()) },
+                    onOpenPage = ::openPenrixModule,
+                )
+            }
 
             if (microsurveyVisible) {
                 MicrosurveyPrompt(
@@ -1389,6 +1400,25 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
 
     private fun registerCollectionStorageObserver() {
         requireComponents.core.tabCollectionStorage.register(collectionStorageObserver, this)
+    }
+
+    /**
+     * Enter an allowlisted site using Fenix's real tab stack. Reuse an existing tab when
+     * its URL matches, preserving scroll/navigation state instead of always reopening.
+     */
+    private fun openPenrixModule(module: PenrixSiteModule, url: String) {
+        if (PenrixSiteModuleRegistry.forUrl(url)?.id != module.id) return
+
+        val tabs = requireComponents.useCases.tabsUseCases
+        val existing = store.state.tabs.firstOrNull { tab ->
+            !tab.content.private && tab.content.url == url
+        }
+        if (existing != null) {
+            tabs.selectTab(existing.id)
+        } else {
+            tabs.addTab.invoke(url = url, selectTab = true, startLoading = true, private = false)
+        }
+        navigateFromHomeFragmentToBrowserFragment(findNavController())
     }
 
     private fun openTabsTray() {

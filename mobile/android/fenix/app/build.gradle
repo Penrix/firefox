@@ -112,7 +112,7 @@ android {
         debug {
             shrinkResources = false
             minifyEnabled = false
-            applicationIdSuffix ".fenix.debug"
+            applicationIdSuffix ".penrix.private" // debug APK: org.mozilla.penrix.private, isolated from official Firefox
             resValue "bool", "IS_DEBUG", "true"
             pseudoLocalesEnabled = true
         }
