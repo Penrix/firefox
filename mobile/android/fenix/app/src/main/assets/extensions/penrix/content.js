@@ -3,6 +3,7 @@
   globalThis.__penrixReading = true;
   const twkan = /(^|\.)twkan\.com$/.test(location.hostname);
   const cool18 = /(^|\.)cool18\.com$/.test(location.hostname) && location.pathname.startsWith('/bbs4/');
+  const twkanBody = twkan && (document.querySelector('#txtcontent0, #txtcontent') || document.querySelector('.txtnav'));
   const originals = new Map();
   let simplified = false, observer;
   const excluded = 'script,style,textarea,input,select,code,pre,[contenteditable]:not([contenteditable="false"]),[data-penrix-controls]';
@@ -50,9 +51,11 @@
   browser.runtime.onMessage.addListener(message => {
     if (message.type === 'penrix-text') setSimplified(message.action !== 'original');
   });
-  function plainText(root) {
+  function plainText(root, duplicateTitle) {
     const clone = root.cloneNode(true);
     clone.querySelectorAll('script,style,iframe,ins,.adsbygoogle,[data-penrix-controls]').forEach(n => n.remove());
+    const heading = clone.querySelector('h1');
+    if (heading && heading.textContent.trim() === duplicateTitle) heading.remove();
     let out = '';
     function walk(node) {
       if (node.nodeType === Node.TEXT_NODE) out += node.nodeValue;
@@ -70,10 +73,13 @@
     const route = location.pathname.match(/^\/(?:txt|book)\/(\d+)\/(\d+)(?:\.html)?\/?$/);
     let root, workUrl, title, workTitle;
     if (twkan && route) {
-      root = document.querySelector('#txtcontent0, #txtcontent, .txtnav');
+      root = twkanBody;
       workUrl = location.origin + '/book/' + route[1] + '.html';
       title = document.querySelector('h1')?.textContent?.trim() || document.title;
-      workTitle = document.querySelector('meta[property="og:novel:book_name"]')?.content || document.querySelector('a[href$="/book/' + route[1] + '.html"]')?.textContent?.trim() || title;
+      const bookLinks = document.querySelectorAll(`a[href$="/book/${route[1]}.html"], a[href$="/book/${route[1]}/index.html"]`);
+      const linkedTitle = Array.from(bookLinks, link => link.textContent.trim())
+        .find(label => label && !/^(?:[書书][頁页]|目[錄录])$/.test(label));
+      workTitle = document.querySelector('meta[property="og:novel:book_name"]')?.content || linkedTitle || title;
     } else if (cool18 && new URL(location.href).searchParams.get('act') === 'threadview') {
       root = document.querySelector('#threadcontent');
       workUrl = location.href;
@@ -81,7 +87,7 @@
       workTitle = title;
     }
     if (!root) return null;
-    const rawText = plainText(root);
+    const rawText = plainText(root, twkan ? title : null);
     if (!rawText) return null;
     const cleaned = twkan ? PenrixText.cleanTwkan(rawText) : { rawText, cleanText:rawText, removedSpans:[], cleanerVersion:0 };
     function chapterLink(label) {
@@ -97,8 +103,7 @@
   const chapter = extract();
   if (chapter) {
     if (twkan) {
-      const root = document.querySelector('#txtcontent0, #txtcontent, .txtnav');
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(twkanBody, NodeFilter.SHOW_TEXT);
       const nodes = [];
       while (walker.nextNode()) nodes.push(walker.currentNode);
       for (const node of nodes) {
