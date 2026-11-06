@@ -37,6 +37,13 @@ test('cleans observed library slogan and does not consume normal following prose
   assert.equal(text.cleanTwkan('前文本站域名twkan.com後文提到閱讀體驗很好。').cleanText, '前文後文提到閱讀體驗很好。');
 });
 
+test('removes the TWKAN first-publication credit without consuming prose', () => {
+  const credit = '本書由𝕥𝕨𝕜𝕒𝕟.𝕔𝕠𝕞全網首發';
+  assert.equal(text.cleanTwkan(`甲，${credit}乙。`).cleanText, '甲，乙。');
+  assert.equal(text.cleanTwkan(credit).cleanText, '');
+  assert.equal(text.cleanTwkan('本書由出版社全網首發。').cleanText, '本書由出版社全網首發。');
+});
+
 test('simplifies Taiwanese variants and phrases, retains meaningful characters', () => {
   assert.equal(text.simplify('他在裡面使用滑鼠和軟體，閱讀著作，乾坤未定。'), '他在里面使用鼠标和软件，阅读著作，乾坤未定。');
 });

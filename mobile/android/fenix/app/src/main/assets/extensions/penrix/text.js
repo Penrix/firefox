@@ -48,6 +48,9 @@
     }
     for (const match of rawText.matchAll(/[^\n。！？!?；;]+/gu)) {
       const mapped = skeleton(match[0], match.index), s = mapped.text;
+      for (const credit of s.matchAll(/本[書书]由twkancom全[網网]首[發发]/g)) {
+        add(mapped, credit.index, credit.index + credit[0].length, 'twkan-first-publication');
+      }
       for (const marker of ['googlesearchtwkan','google搜索twkan','台湾小说网藏书广twkancom任你读','台灣小說網藏書廣twkancom任你讀','台灣小說網藏書广twkancom任你读','台湾小说网藏书廣twkancom任你讀']) {
         for (let at = s.indexOf(marker); at >= 0; at = s.indexOf(marker, at + marker.length)) add(mapped, at, at + marker.length, 'observed-watermark');
       }
@@ -99,7 +102,7 @@
     }
     let cleanText = rawText;
     for (const span of [...removedSpans].reverse()) cleanText = cleanText.slice(0, span.start) + cleanText.slice(span.end);
-    return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:4 };
+    return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t\u3000]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:5 };
   }
   const api = { cleanTwkan, simplify:text => convert(text) };
   if (typeof module === 'object') module.exports = api;

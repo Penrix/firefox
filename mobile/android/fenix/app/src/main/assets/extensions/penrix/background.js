@@ -1,3 +1,9 @@
+browser.webRequest.onBeforeRequest.addListener(
+  ({ documentUrl }) => ({ cancel: /^https?:\/\/(?:[^/]+\.)?cool18\.com\/bbs4\//i.test(documentUrl || '') }),
+  { urls: ['*://ad.parkvv.com/*'], types: ['script', 'xmlhttprequest'] },
+  ['blocking'],
+);
+
 async function inject(tabId) {
   for (const file of ['opencc.js', 'text.js', 'content.js']) {
     await browser.tabs.executeScript(tabId, { file });
