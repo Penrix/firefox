@@ -9,7 +9,9 @@ import android.util.Log
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mozilla.components.concept.engine.webextension.InstallationMethod
 import org.mozilla.fenix.components.Components
 
@@ -34,11 +36,11 @@ object PenrixAdblockBootstrap {
     fun start(context: Context, components: Components, scope: CoroutineScope) {
         if (!started.compareAndSet(false, true)) return
 
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        // Respect a deliberate removal or disable after a successful first-time setup.
-        if (prefs.getBoolean(PREF_COMPLETED, false)) return
-
         scope.launch {
+            val prefs = withContext(Dispatchers.IO) {
+                context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .takeUnless { it.getBoolean(PREF_COMPLETED, false) }
+            } ?: return@launch
             val manager = components.addonManager
             try {
                 // getAddonByID waits for GeckoView's installed extension state.

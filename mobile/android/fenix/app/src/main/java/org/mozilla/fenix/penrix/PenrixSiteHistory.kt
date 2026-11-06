@@ -11,10 +11,9 @@ import android.content.Context
  * This stores only an allowlisted URL, never cookies, passwords or arbitrary browsing history.
  */
 class PenrixSiteHistory(context: Context) {
-    private val preferences = context.applicationContext.getSharedPreferences(
-        "penrix_site_module_history",
-        Context.MODE_PRIVATE,
-    )
+    private val preferences by lazy {
+        context.applicationContext.getSharedPreferences("penrix_site_module_history", Context.MODE_PRIVATE)
+    }
 
     fun lastUrl(module: PenrixSiteModule): String? =
         preferences.getString("last_${module.id}", null)

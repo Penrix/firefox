@@ -6,6 +6,7 @@ package org.mozilla.fenix.penrix
 
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -22,8 +23,8 @@ import mozilla.components.lib.state.ext.flow
  */
 object PenrixSiteTracker {
     fun start(scope: CoroutineScope, store: BrowserStore, context: Context): Job {
-        val history = PenrixSiteHistory(context.applicationContext)
-        return scope.launch {
+        return scope.launch(Dispatchers.IO) {
+            val history = PenrixSiteHistory(context.applicationContext)
             store.flow()
                 .map { state ->
                     state.selectedTab?.content?.let { content ->

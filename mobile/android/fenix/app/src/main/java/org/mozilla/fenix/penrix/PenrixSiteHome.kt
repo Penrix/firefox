@@ -27,7 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +40,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 @Composable
 fun PenrixSiteHome(
@@ -50,28 +54,33 @@ fun PenrixSiteHome(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var library by remember { mutableStateOf(PenrixReadingStore(context).use { it.library() }) }
+    var library by remember { mutableStateOf(emptyList<JSONObject>()) }
     var shelf by rememberSaveable { mutableStateOf(false) }
-    var adblockStatus by remember { mutableStateOf(PenrixAdblockBootstrap.status(context)) }
+    var adblockStatus by remember { mutableStateOf("not_started") }
     val ink = Color(0xFF223D35)
     val muted = Color(0xFF73786F)
     val paper = Color(0xFFF7F6F0)
-    DisposableEffect(lifecycleOwner) {
-        val listener = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                library = PenrixReadingStore(context).use { it.library() }
+    LaunchedEffect(context, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            library = withContext(Dispatchers.IO) { PenrixReadingStore(context).use { it.library() } }
+        }
+    }
+    LaunchedEffect(context) {
+        val prefs = withContext(Dispatchers.IO) {
+            context.getSharedPreferences("penrix_adblock_bootstrap", Context.MODE_PRIVATE).also {
+                it.getString("initial_install_status", "not_started")
             }
         }
-        lifecycleOwner.lifecycle.addObserver(listener)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(listener) }
-    }
-    DisposableEffect(context) {
-        val prefs = context.getSharedPreferences("penrix_adblock_bootstrap", Context.MODE_PRIVATE)
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == "initial_install_status") adblockStatus = PenrixAdblockBootstrap.status(context)
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        try {
+            adblockStatus = PenrixAdblockBootstrap.status(context)
+            awaitCancellation()
+        } finally {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
     }
     fun read(chapterUrl: String) {
         context.startActivity(Intent(context, PenrixReaderActivity::class.java).putExtra("chapter_url", chapterUrl))
