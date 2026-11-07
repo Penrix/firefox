@@ -20,12 +20,15 @@ import android.text.style.LeadingMarginSpan
 import android.text.style.LineHeightSpan
 import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
 import kotlin.math.roundToInt
 import org.json.JSONObject
@@ -37,6 +40,7 @@ class PenrixReaderActivity : Activity() {
     private lateinit var reading: PenrixReadingStore
     private lateinit var chapter: JSONObject
     private lateinit var root: LinearLayout
+    private var systemInsets = Insets.NONE
     private lateinit var header: TextView
     private lateinit var body: TextView
     private lateinit var scroll: ScrollView
@@ -50,6 +54,7 @@ class PenrixReaderActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         reading = PenrixReadingStore(this)
         val url = savedInstanceState?.getString("chapter_url") ?: intent.getStringExtra("chapter_url").orEmpty()
         val initial = reading.chapter(url) ?: run { finish(); return }
@@ -75,7 +80,15 @@ class PenrixReaderActivity : Activity() {
         }
         root.addView(header)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            systemInsets = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
+            applyReaderPadding()
+            insets
+        }
         setContentView(root)
+        ViewCompat.requestApplyInsets(root)
         gestures = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean = true
             override fun onSingleTapUp(e: MotionEvent): Boolean = readerTap(e)
@@ -105,9 +118,16 @@ class PenrixReaderActivity : Activity() {
         }
     }
 
-    private fun render() {
+    private fun applyReaderPadding() {
         val margin = dp(setting("margin", 24))
-        root.setPadding(margin, 0, margin, 0)
+        root.setPadding(
+            margin + systemInsets.left, systemInsets.top,
+            margin + systemInsets.right, systemInsets.bottom,
+        )
+    }
+
+    private fun render() {
+        applyReaderPadding()
         val night = prefs.getBoolean("night", false)
         val background = if (night) Color.rgb(24, 29, 27) else Color.rgb(246, 244, 236)
         val ink = if (night) Color.rgb(217, 225, 215) else Color.rgb(35, 42, 37)
@@ -304,8 +324,10 @@ class PenrixReaderActivity : Activity() {
     private fun styleSystemBars(background: Int, night: Boolean) {
         window.statusBarColor = background
         window.navigationBarColor = background
-        window.decorView.systemUiVisibility = if (night) 0 else
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        WindowCompat.getInsetsController(window, root).apply {
+            isAppearanceLightStatusBars = !night
+            isAppearanceLightNavigationBars = !night
+        }
     }
 
     override fun onResume() {

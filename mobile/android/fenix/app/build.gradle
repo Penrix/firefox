@@ -666,7 +666,6 @@ dependencies {
 
     debugImplementation libs.androidx.compose.ui.tooling
     debugImplementation libs.androidx.glance.appwidget.preview
-    debugImplementation libs.leakcanary
 
     // Declares androidx.activity.ComponentActivity in the app under test, which the host-less
     // Compose rules launch. Only added when building a non-debug variant for UI tests, so that
