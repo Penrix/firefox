@@ -6,6 +6,7 @@ package org.mozilla.fenix.perf
 
 import android.os.Build
 import android.os.StrictMode
+import android.os.strictmode.DiskReadViolation
 import android.os.strictmode.Violation
 import androidx.annotation.RequiresApi
 import mozilla.components.support.base.log.logger.Logger
@@ -18,6 +19,7 @@ private const val INSTRUMENTED_HOOKS_CLASS = "com.android.tools.deploy.instrumen
 private const val ACTIVITY_MANAGER_SERVICE_CLASS = "com.android.server.am.ActivityManagerService"
 private const val IN_MEMORY_DEX_CLASS_LOADER_CLASS = "dalvik.system.InMemoryDexClassLoader"
 private const val MIUI_MULTI_LANG_HELPER_CLASS = "miui.util.font.MultiLangHelper"
+private const val MIUI_TURBO_SCHED_CLASS = "miui.turbosched.TurboSchedMonitorImpl"
 private const val PLATFORM_PREFERENCE_CLASS = "androidx.preference.Preference"
 
 /**
@@ -56,6 +58,7 @@ class ThreadPenaltyDeathWithIgnoresListener(
             containsInstrumentedHooksClass(violation) ||
             isSamsungIdsController(violation) ||
             isXiaomiMultiLangHelperViolation(violation) ||
+            isXiaomiTurboSchedViolation(violation) ||
             isFinishAttachApplication(violation) ||
             containsInMemoryDexClassLoader(violation) ||
             isInflatingPlatformPreference(violation)
@@ -121,6 +124,11 @@ class ThreadPenaltyDeathWithIgnoresListener(
         return manufacturerChecker.isXiaomi() &&
             violation.stackTrace.any { it.className == MIUI_MULTI_LANG_HELPER_CLASS }
     }
+
+    private fun isXiaomiTurboSchedViolation(violation: Violation): Boolean =
+        manufacturerChecker.isXiaomi() &&
+            violation is DiskReadViolation &&
+            violation.stackTrace.any { it.className == MIUI_TURBO_SCHED_CLASS }
 
     private fun isInflatingPlatformPreference(violation: Violation): Boolean {
         // See https://bugzilla.mozilla.org/show_bug.cgi?id=2030682
