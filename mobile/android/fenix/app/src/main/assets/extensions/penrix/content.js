@@ -51,23 +51,46 @@
   browser.runtime.onMessage.addListener(message => {
     if (message.type === 'penrix-text') setSimplified(message.action !== 'original');
   });
-  function plainText(root, duplicateTitle) {
-    const clone = root.cloneNode(true);
-    clone.querySelectorAll('script,style,iframe,ins,.adsbygoogle,[data-penrix-controls]').forEach(n => n.remove());
-    const heading = clone.querySelector('h1');
-    if (heading && heading.textContent.trim() === duplicateTitle) heading.remove();
-    let out = '';
-    function walk(node) {
-      if (node.nodeType === Node.TEXT_NODE) out += node.nodeValue;
-      else {
-        const block = /^(BR|P|DIV|LI|SECTION|H[1-6])$/.test(node.nodeName);
-        if (block && out && !out.endsWith('\n')) out += '\n';
-        node.childNodes.forEach(walk);
-        if (block && out && !out.endsWith('\n')) out += '\n';
-      }
+  function readChapterText(root, duplicateTitle) {
+    const heading = root.querySelector('h1');
+    const skippedHeading = heading?.textContent.trim() === duplicateTitle ? heading : null;
+    const segments = [];
+    let text = '';
+    function lineBreak() {
+      if (text && !text.endsWith('\n')) text += '\n';
     }
-    walk(clone);
-    return out.replace(/\n[ \t\u3000]+/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    function walk(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        segments.push({ node, start: text.length });
+        text += node.nodeValue;
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE || node === skippedHeading ||
+          node.matches('script,style,iframe,ins,.adsbygoogle,[data-penrix-controls]')) return;
+      const block = /^(BR|P|DIV|LI|SECTION|H[1-6])$/.test(node.nodeName);
+      if (block) lineBreak();
+      node.childNodes.forEach(walk);
+      if (block) lineBreak();
+    }
+    walk(root);
+    return { text, segments };
+  }
+  function formatChapterText(text) {
+    return text.replace(/\n[ \t\u3000]+/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  function removeTextSpans(segments, spans) {
+    let first = 0;
+    for (const { node, start } of segments) {
+      const raw = node.nodeValue;
+      const end = start + raw.length;
+      while (spans[first]?.end <= start) first++;
+      let offset = 0, remaining = '';
+      for (let i = first; i < spans.length && spans[i].start < end; i++) {
+        remaining += raw.slice(offset, Math.max(0, spans[i].start - start));
+        offset = Math.min(raw.length, spans[i].end - start);
+      }
+      if (offset > 0) node.nodeValue = remaining + raw.slice(offset);
+    }
   }
   function extract() {
     const route = location.pathname.match(/^\/(?:txt|book)\/(\d+)\/(\d+)(?:\.html)?\/?$/);
@@ -87,9 +110,11 @@
       workTitle = title;
     }
     if (!root) return null;
-    const rawText = plainText(root, twkan ? title : null);
-    if (!rawText) return null;
-    const cleaned = twkan ? PenrixText.cleanTwkan(rawText) : { rawText, cleanText:rawText, removedSpans:[], cleanerVersion:0 };
+    const { text, segments } = readChapterText(root, twkan ? title : null);
+    const rawText = twkan ? text : formatChapterText(text);
+    if (!rawText.trim()) return null;
+    const cleaned = twkan ? PenrixText.cleanTwkan(rawText) : { cleanText:rawText, removedSpans:[], cleanerVersion:0 };
+    if (cleaned.removedSpans.length) removeTextSpans(segments, cleaned.removedSpans);
     function chapterLink(label) {
       const link = [...document.querySelectorAll('a[href]')].find(a => label.test(a.textContent.trim()));
       if (!link) return null;
@@ -98,19 +123,10 @@
       const next = target.pathname.match(/^\/(?:txt|book)\/(\d+)\/(\d+)(?:\.html)?\/?$/);
       return target.origin === location.origin && next && next[1] === route[1] && next[2] !== route[2] ? target.href : null;
     }
-    return { siteId:twkan ? 'twkan' : 'cool18', url:location.href, workUrl, title:PenrixText.simplify(title), workTitle:PenrixText.simplify(workTitle), rawText, text:PenrixText.simplify(cleaned.cleanText), removedSpans:cleaned.removedSpans, cleanerVersion:cleaned.cleanerVersion, previousUrl:chapterLink(/^上一[章頁页]$/), nextUrl:chapterLink(/^下一[章頁页]$/), catalogUrl:twkan ? location.origin + '/book/' + route[1] + '/index.html' : workUrl };
+    return { siteId:twkan ? 'twkan' : 'cool18', url:location.href, workUrl, title:PenrixText.simplify(title), workTitle:PenrixText.simplify(workTitle), rawText, text:PenrixText.simplify(formatChapterText(cleaned.cleanText)), removedSpans:cleaned.removedSpans, cleanerVersion:cleaned.cleanerVersion, previousUrl:chapterLink(/^上一[章頁页]$/), nextUrl:chapterLink(/^下一[章頁页]$/), catalogUrl:twkan ? location.origin + '/book/' + route[1] + '/index.html' : workUrl };
   }
   const chapter = extract();
   if (chapter) {
-    if (twkan) {
-      const walker = document.createTreeWalker(twkanBody, NodeFilter.SHOW_TEXT);
-      const nodes = [];
-      while (walker.nextNode()) nodes.push(walker.currentNode);
-      for (const node of nodes) {
-        const cleaned = PenrixText.cleanTwkan(node.nodeValue);
-        if (cleaned.removedSpans.length) node.nodeValue = cleaned.cleanText;
-      }
-    }
     const port = browser.runtime.connectNative('penrixReading');
     port.postMessage({ type:'chapter_ready', chapter });
     const bar = document.createElement('div');

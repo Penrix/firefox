@@ -10,7 +10,7 @@ test('chapter extraction retains source before cleaning and conversion; dynamic 
     <a href="/book/88637/index.html">測試作品</a>
     <a href="/book/88637.html">書頁</a><a href="/book/88637/index.html">目錄</a>
     <div class="txtnav"><h1>第二章 門</h1><div>作者：測試作者</div>
-      <div id="txtcontent0">他推開門。<br>追台灣小說就上台灣小說網，t̴w̴k̴a̴n̴.c̴o̴m̴輕鬆讀<br>屋裡沒有人。</div>
+      <div id="txtcontent0">𠮷野推開門。<br>追台灣小說就上台灣小說網，t̴w̴k̴a̴n̴.c̴o̴m̴輕鬆讀<br><span>GOOGLE搜索</span><span>TWKAN</span>屋裡沒有人。</div>
     </div><a href="/txt/88637/50790316">下一章</a><textarea>保留繁體輸入</textarea>
   </body></html>`, { url:'https://twkan.com/txt/88637/50790315', runScripts:'outside-only' });
   const { window } = dom;
@@ -23,9 +23,14 @@ test('chapter extraction retains source before cleaning and conversion; dynamic 
   for (const file of ['opencc.js', 'text.js', 'content.js']) window.eval(fs.readFileSync(path.join(assets, file), 'utf8'));
   await new Promise(resolve => setTimeout(resolve, 0));
   const chapter = messages.find(m => m.type === 'chapter_ready').chapter;
-  assert.match(chapter.rawText, /台灣小說網/);
+  assert.match(chapter.rawText, /GOOGLE搜索TWKAN/);
   assert.equal(chapter.workTitle, '测试作品');
-  assert.equal(chapter.text, '他推开门。\n\n屋里没有人。');
+  assert.equal(chapter.text, '𠮷野推开门。\n\n屋里没有人。');
+  assert.deepEqual(
+    Array.from(chapter.removedSpans, ({ start, end }) => chapter.rawText.slice(start, end)),
+    ['追台灣小說就上台灣小說網，t̴w̴k̴a̴n̴.c̴o̴m̴輕鬆讀', 'GOOGLE搜索TWKAN'],
+  );
+  assert.equal(window.document.querySelector('#txtcontent0').textContent, '𠮷野推开门。屋里没有人。');
   assert.equal(chapter.nextUrl, 'https://twkan.com/txt/88637/50790316');
   assert.equal(window.document.querySelector('textarea').value, '保留繁體輸入');
   const added = window.document.createElement('p');

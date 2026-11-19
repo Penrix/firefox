@@ -35,6 +35,9 @@ test('preserves rare name characters beside a watermark and removes standalone s
 test('cleans observed library slogan and does not consume normal following prose', () => {
   assert.equal(text.cleanTwkan('前文。台湾小说网藏书广，𝗍𝗐𝗄𝖺𝗇.𝖼𝗈𝗆任你读后文。').cleanText, '前文。后文。');
   assert.equal(text.cleanTwkan('前文本站域名twkan.com後文提到閱讀體驗很好。').cleanText, '前文後文提到閱讀體驗很好。');
+  assert.equal(text.cleanTwkan('前文。台灣小说網藏書广，𝗍𝗐𝗄𝖺𝗇.𝖼𝗈𝗆任你讀后文。').cleanText, '前文。后文。');
+  assert.equal(text.cleanTwkan('前文。Ｇｏｏｇｌｅ搜尋ＴＷＫＡＮ．ＣＯＭ后文。').cleanText, '前文。后文。');
+  assert.equal(text.cleanTwkan('他說台灣小说網有這本書。').cleanText, '他說台灣小说網有這本書。');
 });
 
 test('removes the TWKAN first-publication credit without consuming prose', () => {

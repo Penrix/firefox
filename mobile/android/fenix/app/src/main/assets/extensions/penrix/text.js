@@ -29,6 +29,12 @@
   const cueKeys = cues.map(v => skeleton(v).text);
   const weakCues = new Set(['记住','記住','首发','首發','读台湾','讀台灣','看台湾','看台灣']);
   const tailKeys = tails.map(v => skeleton(v).text).sort((a, b) => b.length - a.length);
+  const siteName = /台[湾灣]小[说說][网網]/;
+  const siteKeys = new RegExp(`twkancom|${siteName.source}`, 'g');
+  const observedPromotions = [
+    /google(?:search|搜[索寻尋])twkan(?:com)?/g,
+    new RegExp(`${siteName.source}藏[书書][广廣]twkancom任你[读讀]`, 'g'),
+  ];
   function cleanTwkan(rawText) {
     const spans = [];
     function add(mapped, start, end, reason, decoration = false) {
@@ -56,8 +62,10 @@
       for (const credit of s.matchAll(/本[書书]由twkancom全[網网]首[發发]/g)) {
         add(mapped, credit.index, credit.index + credit[0].length, 'twkan-first-publication');
       }
-      for (const marker of ['googlesearchtwkan','google搜索twkan','台湾小说网藏书广twkancom任你读','台灣小說網藏書廣twkancom任你讀','台灣小說網藏書广twkancom任你读','台湾小说网藏书廣twkancom任你讀']) {
-        for (let at = s.indexOf(marker); at >= 0; at = s.indexOf(marker, at + marker.length)) add(mapped, at, at + marker.length, 'observed-watermark');
+      for (const pattern of observedPromotions) {
+        for (const marker of s.matchAll(pattern)) {
+          add(mapped, marker.index, marker.index + marker[0].length, 'observed-watermark');
+        }
       }
       for (const marker of ['69shuxcom','69shux']) {
         for (let at = s.indexOf(marker); at >= 0; at = s.indexOf(marker, at + marker.length)) {
@@ -66,32 +74,31 @@
           if (/[^\x00-\x7f]/u.test(chunk) || (!/\p{Script=Han}/u.test(residue) && residue.length <= 24)) add(mapped, at, at + marker.length, 'legacy-watermark', true);
         }
       }
-      for (const site of ['twkancom','台湾小说网','台灣小說網']) {
-        for (let at = s.indexOf(site); at >= 0; at = s.indexOf(site, at + site.length)) {
-          const matches = [];
-          for (const cue of cueKeys) {
-            for (let i = s.indexOf(cue); i >= 0 && i < at; i = s.indexOf(cue, i + cue.length)) {
-              if (at - i <= 100) matches.push({ start:i, end:i + cue.length, cue });
-            }
+      for (const site of s.matchAll(siteKeys)) {
+        const at = site.index;
+        const matches = [];
+        for (const cue of cueKeys) {
+          for (let i = s.indexOf(cue); i >= 0 && i < at; i = s.indexOf(cue, i + cue.length)) {
+            if (at - i <= 100) matches.push({ start:i, end:i + cue.length, cue });
           }
-          matches.sort((a, b) => b.end - a.end || a.start - b.start);
-          if (!matches.length) continue;
-          let start = matches[0].start, end = at + site.length;
-          for (;;) {
-            const earlier = matches.find(m => m.start < start && (m.end >= start || start - m.end <= (weakCues.has(m.cue) ? 0 : 6)));
-            if (!earlier) break;
-            start = earlier.start;
-          }
-          for (;;) {
-            const tail = tailKeys.find(t => s.startsWith(t, end));
-            if (!tail) break;
-            end += tail.length;
-          }
-          add(mapped, start, end, 'twkan-promotion');
         }
+        matches.sort((a, b) => b.end - a.end || a.start - b.start);
+        if (!matches.length) continue;
+        let start = matches[0].start, end = at + site[0].length;
+        for (;;) {
+          const earlier = matches.find(m => m.start < start && (m.end >= start || start - m.end <= (weakCues.has(m.cue) ? 0 : 6)));
+          if (!earlier) break;
+          start = earlier.start;
+        }
+        for (;;) {
+          const tail = tailKeys.find(t => s.startsWith(t, end));
+          if (!tail) break;
+          end += tail.length;
+        }
+        add(mapped, start, end, 'twkan-promotion');
       }
       const domainAt = s.indexOf('twkancom');
-      const nameAt = Math.max(s.indexOf('台湾小说网'), s.indexOf('台灣小說網'));
+      const nameAt = s.search(siteName);
       if (domainAt >= 0 && nameAt >= 0) {
         const start = Math.min(domainAt, nameAt), end = Math.max(domainAt + 8, nameAt + 5);
         const residue = s.slice(0, start) + s.slice(end);
@@ -107,7 +114,7 @@
     }
     let cleanText = rawText;
     for (const span of [...removedSpans].reverse()) cleanText = cleanText.slice(0, span.start) + cleanText.slice(span.end);
-    return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t\u3000]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:5 };
+    return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t\u3000]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:6 };
   }
   const api = { cleanTwkan, simplify:text => mainlandPhrases(convert(text)) };
   if (typeof module === 'object') module.exports = api;
