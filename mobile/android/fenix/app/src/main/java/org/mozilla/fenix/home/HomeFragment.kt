@@ -1410,9 +1410,11 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
         if (PenrixSiteModuleRegistry.forUrl(url)?.id != module.id) return
 
         val tabs = requireComponents.useCases.tabsUseCases
-        val existing = store.state.tabs.firstOrNull { tab ->
-            !tab.content.private && tab.content.url == url
+        val siteTabs = store.state.tabs.filter { tab ->
+            !tab.content.private && PenrixSiteModuleRegistry.forUrl(tab.content.url)?.id == module.id
         }
+        val existing = siteTabs.firstOrNull { it.content.url == url }
+            ?: siteTabs.maxByOrNull { maxOf(it.lastAccess, it.createdAt) }
         if (existing != null) {
             tabs.selectTab(existing.id)
         } else {

@@ -7,6 +7,7 @@ package org.mozilla.fenix.perf
 import android.os.Build
 import android.os.StrictMode
 import android.os.strictmode.DiskReadViolation
+import android.os.strictmode.DiskWriteViolation
 import android.os.strictmode.Violation
 import androidx.annotation.RequiresApi
 import mozilla.components.support.base.log.logger.Logger
@@ -17,6 +18,7 @@ private const val FCQN_EDM_STORAGE_PROVIDER_BASE = "com.android.server.enterpris
 private const val IDS_CONTROLLER_CLASS = "android.app.IdsController"
 private const val INSTRUMENTED_HOOKS_CLASS = "com.android.tools.deploy.instrument.InstrumentationHooks"
 private const val ACTIVITY_MANAGER_SERVICE_CLASS = "com.android.server.am.ActivityManagerService"
+private const val MIUI_ACTIVITY_MANAGER_INJECTOR_CLASS = "com.android.server.am.ActivityManagerServiceInjector"
 private const val IN_MEMORY_DEX_CLASS_LOADER_CLASS = "dalvik.system.InMemoryDexClassLoader"
 private const val MIUI_MULTI_LANG_HELPER_CLASS = "miui.util.font.MultiLangHelper"
 private const val MIUI_TURBO_SCHED_CLASS = "miui.turbosched.TurboSchedMonitorImpl"
@@ -59,6 +61,7 @@ class ThreadPenaltyDeathWithIgnoresListener(
             isSamsungIdsController(violation) ||
             isXiaomiMultiLangHelperViolation(violation) ||
             isXiaomiTurboSchedViolation(violation) ||
+            isXiaomiTopAppThreadViolation(violation) ||
             isFinishAttachApplication(violation) ||
             containsInMemoryDexClassLoader(violation) ||
             isInflatingPlatformPreference(violation)
@@ -129,6 +132,13 @@ class ThreadPenaltyDeathWithIgnoresListener(
         manufacturerChecker.isXiaomi() &&
             violation is DiskReadViolation &&
             violation.stackTrace.any { it.className == MIUI_TURBO_SCHED_CLASS }
+
+    private fun isXiaomiTopAppThreadViolation(violation: Violation): Boolean =
+        manufacturerChecker.isXiaomi() &&
+            violation is DiskWriteViolation &&
+            violation.stackTrace.any {
+                it.className == MIUI_ACTIVITY_MANAGER_INJECTOR_CLASS && it.methodName == "setTopAppUIThread"
+            }
 
     private fun isInflatingPlatformPreference(violation: Violation): Boolean {
         // See https://bugzilla.mozilla.org/show_bug.cgi?id=2030682
