@@ -11,11 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -50,13 +48,13 @@ import org.json.JSONObject
 @Composable
 fun PenrixSiteHome(
     history: PenrixSiteHistory,
-    onOpenPage: (PenrixSiteModule, String) -> Unit,
+    onOpenPage: (PenrixSiteModule, String, Boolean) -> Unit,
     onOpenTabs: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var library by remember { mutableStateOf(emptyList<JSONObject>()) }
-    var shelf by rememberSaveable { mutableStateOf(false) }
+    var library by remember { mutableStateOf<List<JSONObject>?>(null) }
+    var shelf by rememberSaveable { mutableStateOf(true) }
     var adblockStatus by remember { mutableStateOf("not_started") }
     val ink = Color(0xFF223D35)
     val muted = Color(0xFF73786F)
@@ -86,34 +84,31 @@ fun PenrixSiteHome(
     fun read(chapterUrl: String) {
         context.startActivity(Intent(context, PenrixReaderActivity::class.java).putExtra("chapter_url", chapterUrl))
     }
+    val twkan = requireNotNull(PenrixSiteModuleRegistry.byId("twkan"))
+    val twkanSearchUrl = twkan.homeUrl + "search"
     Column(Modifier.fillMaxSize().background(paper)) {
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 28.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("PENRIX  /  私人浏览器", color = muted, style = MaterialTheme.typography.labelMedium)
-            Text(if (shelf) "我的书架" else "留一点时间，\n给喜欢的文字。", color = ink,
-                style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (shelf) "书架" else "找书",
+                color = ink,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
             if (!shelf) {
-                val latest = library.firstOrNull()
-                Card(colors = CardDefaults.cardColors(containerColor = ink), shape = RoundedCornerShape(24.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("继续阅读", color = Color(0xFFC5D2BC), style = MaterialTheme.typography.labelLarge)
-                        Text(latest?.optString("workTitle")?.ifBlank { "上次阅读" } ?: "从一本好书开始",
-                            color = Color.White, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(latest?.optString("title") ?: "打开站点，收藏喜欢的章节。下次从这里继续。",
-                            color = Color(0xFFD8E0D5), style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (latest != null) Button(onClick = { read(latest.getString("url")) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE8EEDB), contentColor = ink)) { Text("接着读  →") }
-                    }
-                }
-                Text("我的站点", color = ink, style = MaterialTheme.typography.titleMedium)
+                Button(
+                    onClick = { onOpenPage(twkan, twkanSearchUrl, false) },
+                    colors = ButtonDefaults.buttonColors(containerColor = ink, contentColor = Color.White),
+                ) { Text("搜台湾小说网") }
+                Text("继续浏览", color = ink, style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     listOf("twkan", "cool18").forEach { id ->
                         val site = requireNotNull(PenrixSiteModuleRegistry.byId(id))
                         Card(onClick = {
                             val url = history.lastUrl(site)?.let { PenrixSiteModuleRegistry.safeResumeUrl(site, it) } ?: site.homeUrl
-                            onOpenPage(site, url)
+                            onOpenPage(site, url, true)
                         }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(containerColor = if (id == "twkan") Color(0xFFE7ECDf) else Color(0xFFEFE7DC))) {
                             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -132,29 +127,52 @@ fun PenrixSiteHome(
                     else -> "正在准备阅读环境…"
                 }, color = muted, style = MaterialTheme.typography.bodySmall)
             } else {
-                Text("读到哪里，就从哪里继续。", color = muted, style = MaterialTheme.typography.bodyMedium)
-                if (library.isEmpty()) {
-                    Spacer(Modifier.height(24.dp))
-                    Text("书架还空着", color = ink, style = MaterialTheme.typography.titleLarge)
-                    Text("进入章节后点“收藏”或“阅读”，就会留在这里。", color = muted, style = MaterialTheme.typography.bodyMedium)
-                }
-                library.forEach { chapter ->
-                    Card(onClick = { read(chapter.getString("url")) }, modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(chapter.optString("workTitle").ifBlank { "未命名作品" }, color = ink,
-                                style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(chapter.optString("title"), color = muted, style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text("继续阅读  →", color = ink, style = MaterialTheme.typography.labelLarge)
+                val books = library
+                when {
+                    books == null -> Text("正在载入书架…", color = muted)
+                    books.isEmpty() -> {
+                        Text("书架还空着", color = ink, style = MaterialTheme.typography.titleLarge)
+                        Text("打开章节后，点「收藏」或「阅读」即可加入书架。", color = muted)
+                        Button(
+                            onClick = { onOpenPage(twkan, twkanSearchUrl, false) },
+                            colors = ButtonDefaults.buttonColors(containerColor = ink, contentColor = Color.White),
+                        ) { Text("去台湾小说网找书") }
+                    }
+                    else -> books.forEachIndexed { index, chapter ->
+                        val latest = index == 0
+                        Card(
+                            onClick = { read(chapter.getString("url")) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = if (latest) ink else Color.White),
+                            shape = RoundedCornerShape(18.dp),
+                        ) {
+                            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (latest) {
+                                    Text("上次阅读", color = Color(0xFFC5D2BC), style = MaterialTheme.typography.labelLarge)
+                                }
+                                Text(
+                                    chapter.optString("workTitle").ifBlank { "未命名作品" },
+                                    color = if (latest) Color.White else ink,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    chapter.optString("title"),
+                                    color = if (latest) Color(0xFFD8E0D5) else muted,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                 }
             }
         }
         Row(Modifier.fillMaxWidth().background(Color(0xFFEFEEE7)).padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = { shelf = false }) { Text("阅读", color = if (!shelf) ink else muted, fontWeight = if (!shelf) FontWeight.Bold else FontWeight.Normal) }
             TextButton(onClick = { shelf = true }) { Text("书架", color = if (shelf) ink else muted, fontWeight = if (shelf) FontWeight.Bold else FontWeight.Normal) }
+            TextButton(onClick = { shelf = false }) { Text("找书", color = if (!shelf) ink else muted, fontWeight = if (!shelf) FontWeight.Bold else FontWeight.Normal) }
             TextButton(onClick = onOpenTabs) { Text("标签页", color = muted) }
         }
     }

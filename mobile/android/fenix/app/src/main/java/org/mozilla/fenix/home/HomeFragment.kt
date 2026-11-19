@@ -1404,10 +1404,9 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
     }
 
     /**
-     * Enter an allowlisted site using Fenix's real tab stack. Reuse an existing tab when
-     * its URL matches, preserving scroll/navigation state instead of always reopening.
+     * Resume an existing site tab, or navigate it to an explicit destination such as book search.
      */
-    private fun openPenrixModule(module: PenrixSiteModule, url: String) {
+    private fun openPenrixModule(module: PenrixSiteModule, url: String, resume: Boolean) {
         if (PenrixSiteModuleRegistry.forUrl(url)?.id != module.id) return
 
         val tabs = requireComponents.useCases.tabsUseCases
@@ -1418,6 +1417,9 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
             ?: siteTabs.maxByOrNull { maxOf(it.lastAccess, it.createdAt) }
         if (existing != null) {
             tabs.selectTab(existing.id)
+            if (!resume && existing.content.url != url) {
+                requireComponents.useCases.sessionUseCases.loadUrl(url, sessionId = existing.id)
+            }
         } else {
             tabs.addTab.invoke(url = url, selectTab = true, startLoading = true, private = false)
         }
