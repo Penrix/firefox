@@ -31,6 +31,7 @@
   const tailKeys = tails.map(v => skeleton(v).text).sort((a, b) => b.length - a.length);
   const siteName = /台[湾灣]小[说說][网網]/;
   const siteKeys = new RegExp(`twkancom|${siteName.source}`, 'g');
+  const adBrackets = new Map([['〖', '〗'], ['【', '】'], ['〔', '〕'], ['（', '）'], ['[', ']'], ['(', ')']]);
   const observedPromotions = [
     /google(?:search|搜[索寻尋])twkan(?:com)?/g,
     new RegExp(`${siteName.source}藏[书書][广廣]twkancom任你[读讀]`, 'g'),
@@ -112,9 +113,16 @@
       if (last && span.start <= last.end) last.end = Math.max(last.end, span.end);
       else removedSpans.push({ ...span });
     }
+    for (const span of removedSpans) {
+      const close = adBrackets.get(rawText[span.start - 1]);
+      if (close && rawText[span.end] === close) {
+        span.start--;
+        span.end++;
+      }
+    }
     let cleanText = rawText;
     for (const span of [...removedSpans].reverse()) cleanText = cleanText.slice(0, span.start) + cleanText.slice(span.end);
-    return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t\u3000]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:6 };
+    return { rawText, cleanText:removedSpans.length ? cleanText.replace(/[ \t\u3000]+\n/g, '\n').trim() : rawText, removedSpans, cleanerVersion:7 };
   }
   const api = { cleanTwkan, simplify:text => mainlandPhrases(convert(text)) };
   if (typeof module === 'object') module.exports = api;

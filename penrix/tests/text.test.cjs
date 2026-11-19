@@ -47,6 +47,13 @@ test('removes the TWKAN first-publication credit without consuming prose', () =>
   assert.equal(text.cleanTwkan('本書由出版社全網首發。').cleanText, '本書由出版社全網首發。');
 });
 
+test('removes a bracket pair only when it encloses the whole ad', () => {
+  const ad = '記住本站域名臺灣小説網→𝔱𝔴𝔨𝔞𝔫.𝔠𝔬𝔪';
+  assert.equal(text.cleanTwkan(`甲。〖${ad}〗乙。`).cleanText, '甲。乙。');
+  assert.equal(text.cleanTwkan(`【${ad}】`).cleanText, '');
+  assert.equal(text.cleanTwkan(`〖標題：${ad}〗`).cleanText, '〖標題：〗');
+});
+
 test('simplifies Taiwanese variants and phrases, retains meaningful characters', () => {
   assert.equal(text.simplify('他在裡面使用滑鼠和軟體，閱讀著作，乾坤未定。'), '他在里面使用鼠标和软件，阅读著作，乾坤未定。');
 });
