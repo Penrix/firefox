@@ -32,7 +32,9 @@ import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
 import kotlin.math.roundToInt
 import org.json.JSONObject
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.IntentReceiverActivity
+import org.mozilla.fenix.ext.components
 
 class PenrixReaderActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("penrix_reader", Context.MODE_PRIVATE) }
@@ -289,7 +291,8 @@ class PenrixReaderActivity : Activity() {
     }
 
     private fun go(url: String, continueReading: Boolean, edge: Int = 0) {
-        if (url.isBlank() || url == "null" || PenrixSiteModuleRegistry.forUrl(url) == null) {
+        val site = PenrixSiteModuleRegistry.forUrl(url)
+        if (site == null) {
             automatic = false
             scheduleAuto()
             Toast.makeText(this, "没有可打开的页面", Toast.LENGTH_SHORT).show()
@@ -305,7 +308,20 @@ class PenrixReaderActivity : Activity() {
             val flags = edge or (if (automatic) AUTO else 0) or (if (original) ORIGINAL else 0)
             prefs.edit().putString("pending_url", url).putInt("pending_reader_flags", flags).apply()
         }
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url), this, IntentReceiverActivity::class.java))
+        val browserTabs = components.core.store.state.tabs
+        val tabId = intent.getStringExtra(EXTRA_TAB_ID)
+        val tab = browserTabs.firstOrNull {
+            it.id == tabId && !it.content.private && PenrixSiteModuleRegistry.forUrl(it.content.url)?.id == site.id
+        } ?: browserTabs.firstOrNull { !it.content.private && it.content.url == chapterUrl() }
+        if (tab != null) {
+            components.useCases.tabsUseCases.selectTab(tab.id)
+            if (tab.content.url != url || continueReading) {
+                components.useCases.sessionUseCases.loadUrl(url, sessionId = tab.id)
+            }
+            startActivity(Intent(this, HomeActivity::class.java).putExtra(HomeActivity.OPEN_TO_BROWSER, true))
+        } else {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url), this, IntentReceiverActivity::class.java))
+        }
         finish()
     }
 
@@ -355,10 +371,11 @@ class PenrixReaderActivity : Activity() {
         super.onDestroy()
     }
 
-    private companion object {
-        const val AUTO = 1
-        const val FROM_START = 2
-        const val FROM_END = 4
-        const val ORIGINAL = 8
+    companion object {
+        internal const val EXTRA_TAB_ID = "penrix_reader_tab_id"
+        private const val AUTO = 1
+        private const val FROM_START = 2
+        private const val FROM_END = 4
+        private const val ORIGINAL = 8
     }
 }

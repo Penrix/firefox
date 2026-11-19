@@ -51,6 +51,7 @@ import org.json.JSONObject
 fun PenrixSiteHome(
     history: PenrixSiteHistory,
     onOpenPage: (PenrixSiteModule, String) -> Unit,
+    onOpenTabs: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -154,6 +155,7 @@ fun PenrixSiteHome(
         Row(Modifier.fillMaxWidth().background(Color(0xFFEFEEE7)).padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             TextButton(onClick = { shelf = false }) { Text("阅读", color = if (!shelf) ink else muted, fontWeight = if (!shelf) FontWeight.Bold else FontWeight.Normal) }
             TextButton(onClick = { shelf = true }) { Text("书架", color = if (shelf) ink else muted, fontWeight = if (shelf) FontWeight.Bold else FontWeight.Normal) }
+            TextButton(onClick = onOpenTabs) { Text("标签页", color = muted) }
         }
     }
 }

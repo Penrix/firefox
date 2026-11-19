@@ -1024,6 +1024,7 @@ class HomeFragment : Fragment(), UserInteractionHandler, OnLongPressedListener {
                 PenrixSiteHome(
                     history = remember { PenrixSiteHistory(requireContext()) },
                     onOpenPage = ::openPenrixModule,
+                    onOpenTabs = ::openTabsTray,
                 )
             }
 
